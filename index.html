@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AP Gaming · CS Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--surface3:#21262d;
+  --border:#30363d;--text:#e6edf3;--muted:#7d8590;
+  --accent:#58a6ff;--green:#3fb950;--yellow:#d29922;
+  --danger:#f85149;--orange:#f0883e;
+  --radius:12px;--font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:15px;}
+
+.header{background:linear-gradient(135deg,#0d1117,#161e35 60%,#0d1117);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:50;}
+.header h1{font-size:20px;font-weight:700;}
+.header-sub{font-size:13px;color:var(--muted);margin-top:2px;}
+.header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.badge{background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.3);color:var(--accent);font-size:12px;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+
+.btn{border:none;border-radius:8px;padding:6px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:#0d1117;}
+.btn-primary:hover{opacity:.85;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+
+.lang-toggle{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.lang-btn{padding:5px 12px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);border:none;background:transparent;font-family:var(--font);}
+.lang-btn.active{background:var(--accent);color:#0d1117;}
+
+.tabs{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;overflow-x:auto;}
+.tab{padding:13px 20px;font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* Controls */
+.controls{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.ctrl-label{font-size:13px;color:var(--muted);white-space:nowrap;}
+select,input[type=text],input[type=date]{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:13px;outline:none;font-family:var(--font);}
+select:focus,input:focus{border-color:var(--accent);}
+input[type=date]{color-scheme:dark;}
+.preset-group{display:flex;gap:4px;flex-wrap:wrap;}
+.preset-btn{padding:5px 12px;font-size:12px;font-weight:500;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);transition:all .15s;}
+.preset-btn:hover,.preset-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(88,166,255,.1);}
+
+/* Category filter pills */
+.cat-filter-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.cat-pill{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);transition:all .15s;display:flex;align-items:center;gap:5px;}
+.cat-pill:hover{border-color:var(--accent);color:var(--accent);}
+.cat-pill.active{color:#0d1117;border-color:transparent;}
+.cat-pill .pill-dot{width:7px;height:7px;border-radius:50%;}
+
+/* Main */
+.main{padding:22px 28px;max-width:1440px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.grid-3{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:18px;margin-bottom:20px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;}
+.mb{margin-bottom:20px;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
+.card-title{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+.stat-val{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1.1;}
+.stat-label{font-size:13px;color:var(--muted);margin-top:5px;}
+
+.welcome{display:flex;flex-direction:column;align-items:center;gap:14px;padding:80px 28px;text-align:center;}
+.welcome h2{font-size:20px;font-weight:700;}
+.welcome p{color:var(--muted);font-size:13px;max-width:420px;line-height:1.6;}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px 30px;max-width:560px;width:90%;max-height:88vh;overflow-y:auto;}
+.modal h2{font-size:16px;font-weight:700;margin-bottom:6px;}
+.modal-sub{color:var(--muted);font-size:12px;margin-bottom:18px;line-height:1.6;}
+.field{margin-bottom:13px;}
+.field>label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;}
+.field input,.field textarea{width:100%;}
+.field textarea{resize:vertical;}
+code{background:var(--surface2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:11px;font-family:monospace;}
+.cmd-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--accent);font-family:monospace;margin-bottom:16px;word-break:break-all;}
+
+/* Category list */
+.cat-list{display:flex;flex-direction:column;gap:10px;}
+.cat-item{cursor:pointer;transition:opacity .15s;padding:8px;border-radius:8px;}
+.cat-item:hover{background:var(--surface2);}
+.cat-item.dimmed{opacity:.3;}
+.cat-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.cat-name-row{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:500;}
+.cat-bar-bg{background:var(--surface2);border-radius:4px;height:6px;overflow:hidden;}
+.cat-bar{height:100%;border-radius:4px;transition:width .5s ease;}
+
+.group-bars{display:flex;flex-direction:column;gap:8px;}
+.g-row{display:flex;align-items:center;gap:8px;font-size:13px;}
+.g-name{width:115px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);flex-shrink:0;}
+.g-bar-bg{flex:1;background:var(--surface2);border-radius:3px;height:5px;}
+.g-bar{height:100%;border-radius:3px;background:var(--accent);}
+.g-cnt{min-width:26px;text-align:right;font-weight:500;}
+
+.kw-cloud{display:flex;flex-wrap:wrap;gap:6px;}
+.kw{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;}
+
+.insight-list{display:flex;flex-direction:column;gap:8px;}
+.insight-item{display:flex;gap:9px;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);}
+.insight-n{font-size:13px;font-weight:800;color:var(--accent);min-width:15px;}
+.insight-t{font-size:13px;line-height:1.6;}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;justify-content:center;}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:13px;}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* Agent section */
+.agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:18px;margin-bottom:20px;}
+.agent-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;}
+.agent-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.s-good::before{background:var(--green);}
+.s-fair::before{background:var(--yellow);}
+.s-poor::before{background:var(--orange);}
+.s-bad::before{background:var(--danger);}
+.ag-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:13px;}
+.ag-name{font-size:16px;font-weight:700;}
+.ag-meta{font-size:13px;color:var(--muted);margin-top:2px;}
+.score-big{font-size:28px;font-weight:800;line-height:1;text-align:right;}
+.verdict{font-size:12px;font-weight:700;padding:3px 9px;border-radius:10px;margin-top:3px;display:inline-block;}
+.v-good{background:rgba(63,185,80,.15);color:var(--green);}
+.v-fair{background:rgba(210,153,34,.15);color:var(--yellow);}
+.v-poor{background:rgba(240,136,62,.15);color:var(--orange);}
+.v-bad{background:rgba(248,81,73,.15);color:var(--danger);}
+.sec-label{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px;}
+.str-item{display:flex;gap:5px;font-size:13px;line-height:1.5;margin-bottom:3px;}
+
+.compare-card{background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:8px;border:1px solid var(--border);}
+.issue-type{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--orange);margin-bottom:8px;}
+.compare-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cc{border-radius:6px;padding:10px 12px;font-size:13px;line-height:1.6;}
+.cc.orig{background:rgba(248,81,73,.07);border:1px solid rgba(248,81,73,.2);}
+.cc.sugg{background:rgba(63,185,80,.07);border:1px solid rgba(63,185,80,.2);}
+.cc-label{font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;margin-bottom:4px;}
+.cc-label.r{color:var(--danger);}
+.cc-label.g{color:var(--green);}
+.compare-reason{font-size:13px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);}
+.ag-summary{font-size:13px;line-height:1.6;color:var(--muted);padding:9px 11px;background:var(--surface3);border-radius:6px;}
+
+.ag-table{width:100%;border-collapse:collapse;font-size:13px;}
+.ag-table th{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;}
+.ag-table td{padding:10px 12px;border-bottom:1px solid rgba(48,54,61,.5);vertical-align:middle;}
+.ag-table tr:last-child td{border-bottom:none;}
+.ag-table tr{cursor:pointer;}
+.ag-table tr:hover td{background:rgba(255,255,255,.025);}
+.sb-wrap{display:flex;align-items:center;gap:6px;}
+.sb-bg{flex:1;background:var(--surface2);border-radius:3px;height:5px;min-width:50px;}
+.sb-fill{height:100%;border-radius:3px;}
+
+.side-panel{display:none;position:fixed;right:0;top:0;bottom:0;width:380px;background:var(--surface);border-left:1px solid var(--border);z-index:100;overflow-y:auto;padding:20px;transform:translateX(100%);transition:transform .25s ease;}
+.side-panel.open{display:block;transform:translateX(0);}
+.panel-close{cursor:pointer;color:var(--muted);float:right;font-size:16px;}
+.panel-close:hover{color:var(--text);}
+
+.table-wrap{overflow-x:auto;}
+.empty{color:var(--muted);text-align:center;padding:32px;font-size:13px;}
+
+/* Agent avatar */
+.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;color:#0d1117;}
+
+@media(max-width:900px){
+  .header,.controls,.tabs,.main{padding-left:14px;padding-right:14px;}
+  .grid-4{grid-template-columns:1fr 1fr;}
+  .grid-3,.grid-2{grid-template-columns:1fr;}
+  .compare-cols{grid-template-columns:1fr;}
+  .agent-grid{grid-template-columns:1fr;}
+  .side-panel{width:100%;border:none;border-top:1px solid var(--border);}
+}
+@media(max-width:480px){.grid-4{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>📊 <span data-key="title">客服分析報表</span></h1>
+    <div class="header-sub">AP Gaming B2B · <span id="genTime">—</span></div>
+  </div>
+  <div class="header-actions">
+    <span class="badge" id="rangeBadge">—</span>
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('zh')">中文</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+    </div>
+    <button class="btn btn-ghost" onclick="openModal()" data-key="btn_setup">⚙️ 設定</button>
+    <button class="btn btn-ghost" onclick="exportJSON()" data-key="btn_export">📥 匯出</button>
+    <button class="btn btn-ghost" onclick="loadDemo()" data-key="btn_demo">🧪 示範</button>
+    <button class="btn btn-ghost" id="resetBtn" onclick="resetReport()" style="display:none;">🔄 重置</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('inquiry')" data-key="tab_inquiry">📊 問題分析</div>
+  <div class="tab" onclick="switchTab('quality')" data-key="tab_quality">👤 客服品質評核</div>
+  <div class="tab" onclick="switchTab('sentiment')">😤 客戶情緒</div>
+  <div class="tab" onclick="switchTab('weekly')">📋 每週摘要</div>
+</div>
+
+<div class="controls">
+  <!-- Presets -->
+  <span class="ctrl-label" data-key="lbl_range">快速區間</span>
+  <div class="preset-group">
+    <button class="preset-btn" data-days="7" onclick="applyPreset(7)">7d</button>
+    <button class="preset-btn" data-days="14" onclick="applyPreset(14)">14d</button>
+    <button class="preset-btn active" data-days="30" onclick="applyPreset(30)">30d</button>
+    <button class="preset-btn" data-days="60" onclick="applyPreset(60)">60d</button>
+    <button class="preset-btn" data-days="90" onclick="applyPreset(90)">90d</button>
+    <button class="preset-btn" data-days="0" onclick="applyPreset(0)" data-key="preset_thismonth">本月</button>
+    <button class="preset-btn" data-days="-1" onclick="applyPreset(-1)" data-key="preset_lastmonth">上月</button>
+  </div>
+  <!-- Custom date -->
+  <span class="ctrl-label" data-key="lbl_custom">自訂</span>
+  <input type="date" id="dateFrom" onchange="applyCustomRange()">
+  <span style="color:var(--muted);font-size:11px;">→</span>
+  <input type="date" id="dateTo" onchange="applyCustomRange()">
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="modalOverlay" onclick="closeModalOut(event)">
+  <div class="modal">
+    <h2>⚙️ <span data-key="modal_title">資料設定</span></h2>
+    <p class="modal-sub">在 VPS 跑完腳本後，把 <code>report.json</code> 下載到電腦，再上傳進來。</p>
+    <div class="cmd-box">python3 analyze_chat.py data/records.db 30 &gt; report.json</div>
+
+    <!-- 上傳檔案區 -->
+    <div id="dropZone" onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();document.getElementById('dropZone').style.borderColor='var(--accent)';document.getElementById('dropZone').style.background='rgba(88,166,255,.06)'"
+      ondragleave="document.getElementById('dropZone').style.borderColor='var(--border)';document.getElementById('dropZone').style.background=''"
+      ondrop="handleDrop(event)"
+      style="border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;margin-bottom:12px;transition:all .2s;">
+      <div style="font-size:32px;margin-bottom:8px;">📂</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px;">點擊選擇 或 拖曳 report.json</div>
+      <div style="font-size:11px;color:var(--muted);">從 VPS 下載後直接拖進來</div>
+      <input type="file" id="fileInput" accept=".json,application/json" style="display:none;" onchange="handleFileSelect(event)">
+    </div>
+    <div id="fileStatus" style="font-size:12px;color:var(--green);margin-bottom:12px;display:none;padding:8px 12px;background:rgba(63,185,80,.1);border-radius:6px;">✅ <span id="fileStatusText"></span></div>
+
+    <!-- 分隔線 -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <span style="font-size:11px;color:var(--muted);">或直接貼上文字</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
+
+    <textarea id="jsonInput" rows="4" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px;font-size:11px;font-family:monospace;outline:none;margin-bottom:12px;resize:vertical;" placeholder="貼上 JSON 內容..."></textarea>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="loadFromJson()">✅ 載入資料</button>
+      <button class="btn btn-ghost" onclick="loadDemo()">🧪 示範</button>
+      <button class="btn btn-ghost" onclick="closeModal()">✕ 取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <div class="welcome" id="welcomeState">
+    <div style="font-size:52px;">📊</div>
+    <h2 data-key="welcome_title">AP Gaming 客服分析報表</h2>
+    <p data-key="welcome_sub">包含問題分類分析、每日趨勢，以及 AI 客服品質評核（含原文 vs 建議對比）</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+      <button class="btn btn-primary" onclick="loadDemo()" data-key="btn_demo3">🧪 載入示範資料</button>
+      <button class="btn btn-ghost" onclick="openModal()" data-key="btn_setup2">⚙️ 貼入我的資料</button>
+    </div>
+  </div>
+
+  <!-- Tab: Inquiry -->
+  <div id="tabInquiry" style="display:none;">
+    <div class="grid-4" id="kpiGrid"></div>
+
+    <!-- Category filter pills -->
+    <div class="card mb">
+      <div class="card-title" data-key="lbl_filter_cat">篩選問題類型</div>
+      <div class="cat-filter-wrap" id="catFilterPills"></div>
+      <div class="cat-list" id="catList"></div>
+    </div>
+
+    <div class="card mb">
+      <div class="card-title" data-key="lbl_trend">每日訊息量趨勢</div>
+      <canvas id="lineChart" style="max-height:130px;"></canvas>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title" data-key="lbl_pie">問題類型分佈</div>
+        <canvas id="pieChart"></canvas>
+        <div class="legend" id="pieLegend"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-key="lbl_groups">最活躍群組 Top 10</div>
+        <div class="group-bars" id="groupBars"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-key="lbl_insights">AI 改善洞察</div>
+        <div class="insight-list" id="insightList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Quality -->
+  <div id="tabQuality" style="display:none;">
+    <!-- Agent filter bar -->
+    <div class="card mb" style="padding:14px 18px;">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <span class="ctrl-label" data-key="lbl_agent_filter">篩選客服</span>
+        <!-- Agent dropdown -->
+        <select id="agentSelect" onchange="filterAgents()" style="min-width:140px;">
+          <option value="" data-key="opt_all_agents">全部客服</option>
+        </select>
+        <!-- Rating dropdown -->
+        <select id="verdictSelect" onchange="filterAgents()">
+          <option value="" data-key="opt_all_ratings">全部評級</option>
+          <option value="需改善" data-key="opt_poor">需改善</option>
+          <option value="尚可" data-key="opt_fair">尚可</option>
+          <option value="良好" data-key="opt_good">良好</option>
+          <option value="優秀" data-key="opt_excel">優秀</option>
+        </select>
+        <button class="btn btn-ghost" onclick="clearAgentFilter()" data-key="btn_clear_filter" style="font-size:11px;padding:4px 10px;">✕ 清除</button>
+      </div>
+    </div>
+
+    <div class="card mb">
+      <div class="card-title" data-key="lbl_overview">客服人員評核總覽</div>
+      <div class="table-wrap">
+        <table class="ag-table">
+          <thead><tr>
+            <th data-key="th_agent">客服人員</th>
+            <th data-key="th_score">評分</th>
+            <th data-key="th_strength">優點</th>
+            <th data-key="th_issues">問題類型</th>
+            <th data-key="th_replies">回覆數</th>
+            <th data-key="th_rating">評級</th>
+          </tr></thead>
+          <tbody id="agentTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card-title" style="margin-bottom:14px;" data-key="lbl_detail">詳細分析 — 原文 vs 建議改善</div>
+    <div class="agent-grid" id="agentGrid"></div>
+  </div>
+</div>
+
+<!-- Sentiment Tab -->
+<div id="tabSentiment" style="display:none;">
+  <div class="grid-4 mb" id="sentimentKPIs"></div>
+  <div class="grid-2 mb">
+    <div class="card"><div class="card-title">情緒分佈 <span style="font-size:10px;color:var(--accent);font-weight:400;cursor:pointer;" onclick="filterSentimentRecords('angry')">點擊查看詳情</span></div><canvas id="moodChart"></canvas><div class="legend" id="moodLegend"></div></div>
+    <div class="card"><div class="card-title">最常引發不滿的原因</div><div id="triggerList"></div></div>
+  </div>
+  <div class="grid-2 mb">
+    <div class="card"><div class="card-title">最不滿意的群組 Top 5</div><div class="group-bars" id="unhappyGroups"></div></div>
+    <div class="card"><div class="card-title">AI 情緒洞察</div><div id="sentimentSummary"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">負面情緒詳細記錄 <span style="font-size:10px;color:var(--muted);font-weight:400;">點上方情緒卡片或圓餅圖篩選</span></div>
+    <div id="sentimentRecords"></div>
+  </div>
+</div>
+
+<!-- Weekly Tab -->
+<div id="tabWeekly" style="display:none;">
+  <div class="card mb"><div class="card-title">每週訊息量趨勢</div><canvas id="weeklyChart" style="max-height:160px;"></canvas></div>
+  <div id="weeklyCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:20px;"></div>
+</div>
+
+<!-- Side panel -->
+<div class="side-panel" id="sidePanel">
+  <span class="panel-close" onclick="closeSide()">✕</span>
+  <div id="sidePanelContent" style="margin-top:8px;"></div>
+</div>
+
+<script>
+// ── i18n ────────────────────────────────────────────────
+let LANG='zh';
+const I18N={
+  title:{zh:'客服分析報表',en:'CS Analytics Dashboard'},
+  tab_inquiry:{zh:'📊 問題分析',en:'📊 Inquiry Analysis'},
+  tab_quality:{zh:'👤 客服品質評核',en:'👤 Agent Quality'},
+  btn_setup:{zh:'⚙️ 設定',en:'⚙️ Setup'},
+  btn_export:{zh:'📥 匯出',en:'📥 Export'},
+  btn_demo:{zh:'🧪 示範',en:'🧪 Demo'},
+  modal_title:{zh:'資料設定',en:'Data Setup'},
+  modal_sub:{zh:'在 VPS 執行腳本後，把輸出的 JSON 貼入下方。',en:'Run analyze_chat.py on your VPS, then paste the JSON below.'},
+  lbl_json:{zh:'JSON 資料',en:'JSON Data'},
+  btn_load:{zh:'✅ 載入資料',en:'✅ Load Data'},
+  btn_demo2:{zh:'🧪 示範',en:'🧪 Demo'},
+  btn_cancel:{zh:'✕ 取消',en:'✕ Cancel'},
+  welcome_title:{zh:'AP Gaming 客服分析報表',en:'AP Gaming CS Analytics'},
+  welcome_sub:{zh:'包含問題分類分析、每日趨勢，以及 AI 客服品質評核（含原文 vs 建議對比）',en:'Inquiry classification, daily trends, and AI-powered agent quality review with before/after comparisons.'},
+  btn_demo3:{zh:'🧪 載入示範資料',en:'🧪 Load Demo'},
+  btn_setup2:{zh:'⚙️ 貼入我的資料',en:'⚙️ Paste My Data'},
+  lbl_range:{zh:'快速區間',en:'Quick range'},
+  preset_thismonth:{zh:'本月',en:'This mo.'},
+  preset_lastmonth:{zh:'上月',en:'Last mo.'},
+  lbl_custom:{zh:'自訂',en:'Custom'},
+  lbl_filter_cat:{zh:'篩選問題類型',en:'Filter by Category'},
+  lbl_all_cat:{zh:'全部',en:'All'},
+  lbl_trend:{zh:'每日訊息量趨勢',en:'Daily Message Volume'},
+  lbl_pie:{zh:'問題類型分佈',en:'Inquiry Distribution'},
+  lbl_groups:{zh:'最活躍群組 Top 10',en:'Top 10 Active Groups'},
+  lbl_insights:{zh:'AI 改善洞察',en:'AI Insights'},
+  lbl_agent_filter:{zh:'篩選客服',en:'Filter Agent'},
+  opt_all_agents:{zh:'全部客服',en:'All Agents'},
+  opt_all_ratings:{zh:'全部評級',en:'All Ratings'},
+  opt_poor:{zh:'需改善',en:'Needs Improvement'},
+  opt_fair:{zh:'尚可',en:'Fair'},
+  opt_good:{zh:'良好',en:'Good'},
+  opt_excel:{zh:'優秀',en:'Excellent'},
+  btn_clear_filter:{zh:'✕ 清除',en:'✕ Clear'},
+  lbl_overview:{zh:'客服人員評核總覽',en:'Agent Performance Overview'},
+  th_agent:{zh:'客服人員',en:'Agent'},
+  th_score:{zh:'評分',en:'Score'},
+  th_strength:{zh:'優點',en:'Strengths'},
+  th_issues:{zh:'問題類型',en:'Issue Types'},
+  th_replies:{zh:'回覆數',en:'Replies'},
+  th_rating:{zh:'評級',en:'Rating'},
+  lbl_detail:{zh:'詳細分析 — 原文 vs 建議改善',en:'Detailed Reviews — Original vs Suggested'},
+  lbl_week:{zh:'週',en:'week'},
+  orig_reply:{zh:'原始回覆',en:'Original Reply'},
+  suggested:{zh:'建議改善',en:'Suggested'},
+  strengths:{zh:'優點',en:'Strengths'},
+  improve:{zh:'需改善項目',en:'Areas to Improve'},
+  no_issues:{zh:'✓ 無明顯問題',en:'✓ No issues'},
+  replies:{zh:'則回覆',en:'replies'},
+  sampled:{zh:'取樣',en:'sampled'},
+  pairs:{zh:'組',en:'pairs'},
+  msgs:{zh:'則',en:'msgs'},
+  no_data:{zh:'無資料',en:'No data'},
+  examples:{zh:'代表性訊息範例',en:'Example Messages'},
+};
+function T(k){return(I18N[k]||{})[LANG]||k;}
+
+function setLang(lang){
+  LANG=lang;
+  document.documentElement.setAttribute('data-lang',lang);
+  document.querySelectorAll('.lang-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&lang==='zh')||(i===1&&lang==='en')));
+  document.querySelectorAll('[data-key]').forEach(el=>{
+    const k=el.getAttribute('data-key');
+    const v=I18N[k];
+    if(v)el.textContent=v[lang]||el.textContent;
+  });
+  // Update agent select options
+  const sel=document.getElementById('agentSelect');
+  if(sel&&sel.options[0])sel.options[0].textContent=T('opt_all_agents');
+  // Update verdict select
+  const vsel=document.getElementById('verdictSelect');
+  if(vsel){
+    ['','需改善','尚可','良好','優秀'].forEach((v,i)=>{
+      if(vsel.options[i]){
+        const keys=['opt_all_ratings','opt_poor','opt_fair','opt_good','opt_excel'];
+        vsel.options[i].textContent=T(keys[i]);
+      }
+    });
+  }
+  if(DATA)renderReport(DATA);
+}
+
+// ── State ────────────────────────────────────────────────
+let DATA=null, currentTab='inquiry';
+let pieInst=null, lineInst=null;
+let activeCatFilter=null; // null = all
+
+// Known agents from bot.py AGENT_WHITELIST + JIRA_REPORTER_MAP
+const KNOWN_AGENTS=[
+  'Alan Lin','Bruce Gan','Jackie Lee','Juana Lu','Julie Kim',
+  'Lucy Li','Luigi Pomar','Mia Huang','Vincent Lin','Yana Park','Yvette Liu'
+];
+const AGENT_COLORS=['#58a6ff','#3fb950','#e9c46a','#f4a261','#e63946','#6a4c93','#2a9d8f','#bc8cff','#f0883e','#d29922','#8d99ae'];
+
+// ── Date helpers ─────────────────────────────────────────
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function addDays(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
+function monthStart(o=0){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+o);return d.toISOString().slice(0,10);}
+function monthEnd(o=0){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+o+1);d.setDate(0);return d.toISOString().slice(0,10);}
+let dateFrom=addDays(30), dateTo=todayStr();
+
+function applyPreset(days){
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.toggle('active',+b.dataset.days===days));
+  if(days===0){dateFrom=monthStart(0);dateTo=todayStr();}
+  else if(days===-1){dateFrom=monthStart(-1);dateTo=monthEnd(-1);}
+  else{dateFrom=addDays(days);dateTo=todayStr();}
+  document.getElementById('dateFrom').value=dateFrom;
+  document.getElementById('dateTo').value=dateTo;
+  updateBadge();
+  if(DATA)filterByDate();
+}
+function applyCustomRange(){
+  const f=document.getElementById('dateFrom').value;
+  const t=document.getElementById('dateTo').value;
+  if(!f||!t)return;
+  dateFrom=f;dateTo=t;
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  updateBadge();
+  if(DATA)filterByDate();
+}
+function updateBadge(){
+  document.getElementById('rangeBadge').textContent=`${dateFrom.slice(5)} → ${dateTo.slice(5)}`;
+}
+function filterByDate(){
+  const filtered={...DATA,daily_trend:(DATA.daily_trend||[]).filter(d=>d.date>=dateFrom&&d.date<=dateTo)};
+  const tot=filtered.daily_trend.reduce((s,d)=>s+d.count,0);
+  renderReport({...filtered,total_messages:tot||DATA.total_messages});
+}
+// Init
+applyPreset(30);
+
+// ── Modal ────────────────────────────────────────────────
+function openModal(){document.getElementById('modalOverlay').classList.add('open');}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+function closeModalOut(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+
+function handleFileSelect(event){
+  const file=event.target.files[0];
+  if(file)readJsonFile(file);
+}
+function handleDrop(event){
+  event.preventDefault();
+  document.getElementById('dropZone').style.borderColor='var(--border)';
+  document.getElementById('dropZone').style.background='';
+  const file=event.dataTransfer.files[0];
+  if(file)readJsonFile(file);
+}
+function readJsonFile(file){
+  if(!file.name.endsWith('.json')&&file.type!=='application/json'){
+    alert('請選擇 .json 檔案');return;
+  }
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      const st=document.getElementById('fileStatus');
+      const stTxt=document.getElementById('fileStatusText');
+      st.style.display='block';
+      stTxt.textContent=`${file.name} 載入成功（${(file.size/1024).toFixed(1)} KB）`;
+      closeModal();
+      renderReport(data);
+    }catch(err){
+      alert('JSON 格式錯誤：'+err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function loadFromJson(){
+  const raw=document.getElementById('jsonInput').value.trim();
+  if(!raw){alert('請上傳檔案或貼入 JSON');return;}
+  try{closeModal();renderReport(JSON.parse(raw));}
+  catch(e){alert('JSON error: '+e.message);}
+}
+function exportJSON(){
+  if(!DATA)return;
+  const b=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=`ap_report_${(DATA.generated_at||'').replace(/[: ]/g,'_')}.json`;a.click();
+}
+
+// ── Tabs ─────────────────────────────────────────────────
+function switchTab(tab){
+  currentTab=tab;
+  const tabs=['inquiry','quality','sentiment','weekly'];
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',tabs[i]===tab));
+  tabs.forEach(t=>{
+    const el=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(el)el.style.display=t===tab?'block':'none';
+  });
+  document.getElementById('filterWrap').style.display=tab==='inquiry'?'flex':'none';
+  document.getElementById('agentFilterWrap').style.display=tab==='quality'?'flex':'none';
+}
+
+function loadDemo(){closeModal();renderReport(DEMO);}
+
+function resetReport(){
+  DATA=null;
+  activeCatFilter=null;
+  if(pieInst){pieInst.destroy();pieInst=null;}
+  if(lineInst){lineInst.destroy();lineInst=null;}
+  document.getElementById('welcomeState').style.display='flex';
+  document.getElementById('tabInquiry').style.display='none';
+  document.getElementById('tabQuality').style.display='none';
+  document.getElementById('tabSentiment').style.display='none';
+  document.getElementById('tabWeekly').style.display='none';
+  document.getElementById('resetBtn').style.display='none';
+  document.getElementById('genTime').textContent='—';
+  document.getElementById('rangeBadge').textContent='—';
+  document.getElementById('jsonInput').value='';
+  document.getElementById('fileStatus').style.display='none';
+}
+
+// ── Render ───────────────────────────────────────────────
+function renderReport(data){
+  DATA=data;
+  const cls=data.classification||{};
+  const cats=(cls.categories||[]).sort((a,b)=>b.count-a.count);
+  document.getElementById('welcomeState').style.display='none';
+  document.getElementById('resetBtn').style.display='inline-block';
+  ['inquiry','quality','sentiment','weekly'].forEach(t=>{
+    const el=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(el)el.style.display=t===currentTab?'block':'none';
+  });
+  document.getElementById('genTime').textContent=data.generated_at||'—';
+  renderKPIs(data,cats);
+  renderCatPills(cats);
+  renderCatList(cats,activeCatFilter);
+  renderPie(cats);
+  renderLine(data.daily_trend||[]);
+  renderGroups(data.top_groups||[]);
+  renderInsights(cls.insights||[]);
+  populateAgentDropdown(data.agent_quality||[]);
+  renderAgentTable(data.agent_quality||[]);
+  renderAgentCards(data.agent_quality||[]);
+  renderSentiment(data.sentiment||null);
+  renderWeekly(data.weekly_summary||[]);
+}
+
+const KW_COLORS=['#E63946','#457B9D','#2A9D8F','#E9C46A','#F4A261','#6A4C93','#3fb950','#58a6ff','#d29922','#8D99AE'];
+function sc(s){return s>=8?'var(--green)':s>=6?'var(--yellow)':s>=4?'var(--orange)':'var(--danger)';}
+function scCls(s){return s>=7?'s-good':s>=5?'s-fair':s>=3?'s-poor':'s-bad';}
+function vCls(v){return v==='優秀'||v==='良好'?'v-good':v==='尚可'?'v-fair':'v-bad';}
+function vTxt(a){return LANG==='en'?(a.verdict_en||a.verdict):a.verdict;}
+
+function renderKPIs(data,cats){
+  const topCat=cats[0]||{};
+  const aq=data.agent_quality||[];
+  const avg=aq.length?Math.round(aq.reduce((s,a)=>s+a.score,0)/aq.length*10)/10:0;
+  const needWork=aq.filter(a=>a.score<6).length;
+  const kpis=[
+    {val:(data.total_messages||0).toLocaleString(),label:T('th_replies')+' '+T('msgs'),sub:`${data.days||30}d`,color:'var(--accent)'},
+    {val:data.total_groups||0,label:LANG==='zh'?'活躍群組':'Active Groups',sub:LANG==='zh'?'有客戶發言':'with clients',color:'var(--green)'},
+    {val:(topCat.icon||'')+(LANG==='en'?topCat.name_en||topCat.name||'—':topCat.name||'—'),label:LANG==='zh'?'最高頻問題':'Top Issue',sub:`${topCat.percentage||0}%`,color:topCat.color||'var(--danger)'},
+    {val:`${avg}/10`,label:LANG==='zh'?'客服平均評分':'Avg Score',sub:LANG==='zh'?`${needWork}人需改善`:`${needWork} need improvement`,color:avg>=7?'var(--green)':avg>=5?'var(--yellow)':'var(--danger)'},
+  ];
+  document.getElementById('kpiGrid').innerHTML=kpis.map(k=>`<div class="card" style="padding:14px 16px;"><div class="card-title">${k.label}</div><div class="stat-val" style="color:${k.color};font-size:${typeof k.val==='string'&&k.val.replace(/[^a-z\u4e00-\u9fff]/gi,'').length>5?'15px':'24px'}">${k.val}</div><div class="stat-label">${k.sub}</div></div>`).join('');
+}
+
+// ── Category pills ───────────────────────────────────────
+function renderCatPills(cats){
+  const wrap=document.getElementById('catFilterPills');
+  const allBtn=`<button class="cat-pill ${activeCatFilter===null?'active':''}" onclick="setCatFilter(null)" style="${activeCatFilter===null?'background:var(--accent);border-color:var(--accent);color:#0d1117;':''}"><span>${T('lbl_all_cat')}</span></button>`;
+  const pills=cats.map(c=>{
+    const isActive=activeCatFilter===c.name;
+    const style=isActive?`background:${c.color};border-color:${c.color};color:#0d1117;`:'';
+    return `<button class="cat-pill ${isActive?'active':''}" style="${style}" onclick="setCatFilter('${esc(c.name)}')"><span class="pill-dot" style="background:${c.color};${isActive?'background:#0d1117':''}"></span><span>${c.icon} ${esc(LANG==='en'?c.name_en||c.name:c.name)}</span></button>`;
+  }).join('');
+  wrap.innerHTML=allBtn+pills;
+}
+function setCatFilter(name){
+  activeCatFilter=name;
+  if(!DATA)return;
+  const cats=(DATA.classification?.categories||[]).sort((a,b)=>b.count-a.count);
+  renderCatPills(cats);
+  renderCatList(cats,name);
+  // Update pie
+  const filtered=name?cats.filter(c=>c.name===name):cats;
+  renderPie(filtered.length?filtered:cats);
+}
+
+function renderCatList(cats,filter){
+  const max=cats[0]?.count||1;
+  document.getElementById('catList').innerHTML=cats.map(c=>{
+    const dimmed=filter&&filter!==c.name;
+    const name=LANG==='en'?c.name_en||c.name:c.name;
+    const alt=LANG==='zh'?c.name_en||'':c.name||'';
+    return `<div class="cat-item ${dimmed?'dimmed':''}" onclick="openCatPanel(${JSON.stringify(c).replace(/'/g,'&#39;')})">
+      <div class="cat-hdr"><div class="cat-name-row"><span style="font-size:16px">${c.icon}</span><span>${esc(name)}</span><span style="font-size:10px;color:var(--muted);">${esc(alt)}</span></div><span style="font-size:11px;color:var(--muted);">${c.count} ${T('msgs')}</span></div>
+      <div class="cat-bar-bg"><div class="cat-bar" style="width:${Math.round(c.count*100/max)}%;background:${c.color};"></div></div>
+      <div style="font-size:10px;color:var(--muted);text-align:right;margin-top:3px;">${c.percentage}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderPie(cats){
+  if(pieInst){pieInst.destroy();pieInst=null;}
+  pieInst=new Chart(document.getElementById('pieChart'),{
+    type:'doughnut',
+    data:{labels:cats.map(c=>LANG==='en'?c.name_en||c.name:c.name),datasets:[{data:cats.map(c=>c.count),backgroundColor:cats.map(c=>c.color),borderColor:'#161b22',borderWidth:2,hoverOffset:4}]},
+    options:{responsive:true,cutout:'55%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.parsed.toLocaleString()} (${cats[ctx.dataIndex]?.percentage||0}%)`}}}}
+  });
+  document.getElementById('pieLegend').innerHTML=cats.map(c=>`<div class="leg-item"><div class="leg-dot" style="background:${c.color}"></div><span>${c.icon} ${esc(LANG==='en'?c.name_en||c.name:c.name)}</span></div>`).join('');
+}
+
+function renderLine(daily){
+  if(lineInst){lineInst.destroy();lineInst=null;}
+  lineInst=new Chart(document.getElementById('lineChart'),{
+    type:'line',
+    data:{labels:daily.map(d=>d.date.slice(5)),datasets:[{label:T('msgs'),data:daily.map(d=>d.count),borderColor:'#58a6ff',backgroundColor:'rgba(88,166,255,.12)',borderWidth:2.5,pointRadius:daily.length>20?0:3,pointHoverRadius:5,fill:true,tension:.3}]},
+    options:{responsive:true,maintainAspectRatio:true,scales:{x:{grid:{color:'#30363d'},ticks:{color:'#7d8590',font:{size:10},maxTicksLimit:10}},y:{grid:{color:'#30363d'},ticks:{color:'#7d8590',font:{size:10}}}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}}}
+  });
+}
+
+function renderGroups(groups){
+  const max=groups[0]?.count||1;
+  document.getElementById('groupBars').innerHTML=groups.slice(0,10).map(g=>`<div class="g-row"><div class="g-name" title="${esc(g.group)}">${esc(g.group)}</div><div class="g-bar-bg"><div class="g-bar" style="width:${Math.round(g.count*100/max)}%;"></div></div><div class="g-cnt">${g.count}</div></div>`).join('')||`<div class="empty">${T('no_data')}</div>`;
+}
+
+function renderInsights(ins){
+  document.getElementById('insightList').innerHTML=ins.map((t,i)=>`<div class="insight-item"><div class="insight-n">${i+1}</div><div class="insight-t">${esc(t)}</div></div>`).join('')||`<div class="empty">${T('no_data')}</div>`;
+}
+
+// ── Agent section ────────────────────────────────────────
+function populateAgentDropdown(agents){
+  const sel=document.getElementById('agentSelect');
+  // Get names from data OR use KNOWN_AGENTS if empty
+  const names=agents.length?agents.map(a=>a.agent):KNOWN_AGENTS;
+  sel.innerHTML=`<option value="">${T('opt_all_agents')}</option>`+
+    names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+}
+
+function filterAgents(){
+  if(!DATA)return;
+  const agName=document.getElementById('agentSelect').value;
+  const vf=document.getElementById('verdictSelect').value;
+  let ag=DATA.agent_quality||[];
+  if(agName)ag=ag.filter(a=>a.agent===agName);
+  if(vf)ag=ag.filter(a=>a.verdict===vf);
+  renderAgentTable(ag);
+  renderAgentCards(ag);
+}
+function clearAgentFilter(){
+  document.getElementById('agentSelect').value='';
+  document.getElementById('verdictSelect').value='';
+  filterAgents();
+}
+
+function renderAgentTable(agents){
+  const sorted=[...agents].sort((a,b)=>a.score-b.score);
+  document.getElementById('agentTbody').innerHTML=sorted.map(a=>`
+    <tr onclick="scrollToAgent('${esc(a.agent)}')">
+      <td><strong>${esc(a.agent)}</strong></td>
+      <td><div class="sb-wrap"><div class="sb-bg"><div class="sb-fill" style="width:${a.score*10}%;background:${sc(a.score)};"></div></div><span style="font-weight:700;min-width:22px;color:${sc(a.score)}">${a.score}</span></div></td>
+      <td style="font-size:11px;color:var(--muted);max-width:160px;">${(a.strengths||[]).slice(0,1).join('')||'—'}</td>
+      <td style="font-size:11px;">${(a.issues||[]).length?`<span style="color:var(--orange);">${(a.issues||[]).slice(0,2).map(i=>LANG==='en'?i.type_en||i.type:i.type).join(', ')}</span>`:`<span style="color:var(--green)">${T('no_issues')}</span>`}</td>
+      <td>${a.total_replies||0}</td>
+      <td><span class="verdict ${vCls(a.verdict)}">${vTxt(a)}</span></td>
+    </tr>`).join('')||`<tr><td colspan="6" class="empty">${T('no_data')}</td></tr>`;
+}
+
+function renderAgentCards(agents){
+  const sorted=[...agents].sort((a,b)=>a.score-b.score);
+  document.getElementById('agentGrid').innerHTML=sorted.map((a,idx)=>{
+    const color=AGENT_COLORS[KNOWN_AGENTS.indexOf(a.agent)%AGENT_COLORS.length]||AGENT_COLORS[idx%AGENT_COLORS.length];
+    const initials=a.agent.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const issHtml=(a.issues||[]).map(iss=>`
+      <div class="compare-card">
+        <div class="issue-type">⚠️ ${esc(LANG==='en'?iss.type_en||iss.type:iss.type)}</div>
+        <div class="compare-cols">
+          <div class="cc orig"><div class="cc-label r">${T('orig_reply')}</div>"${esc(iss.original)}"</div>
+          <div class="cc sugg"><div class="cc-label g">${T('suggested')}</div>${esc(iss.improved)}</div>
+        </div>
+        <div class="compare-reason">💡 ${esc(iss.reason)}</div>
+      </div>`).join('');
+    const strHtml=(a.strengths||[]).map(s=>`<div class="str-item"><span style="color:var(--green)">✓</span><span>${esc(s)}</span></div>`).join('');
+    return `<div class="agent-card ${scCls(a.score)}" id="ag_${esc(a.agent).replace(/\s/g,'_')}">
+      <div class="ag-hdr">
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="av" style="background:${color}">${initials}</div>
+          <div><div class="ag-name">${esc(a.agent)}</div><div class="ag-meta">${a.total_replies||0} ${T('replies')} · ${T('sampled')} ${a.sample_count||0} ${T('pairs')}</div></div>
+        </div>
+        <div style="text-align:right;"><div class="score-big" style="color:${sc(a.score)}">${a.score}<span style="font-size:12px;color:var(--muted)">/10</span></div><span class="verdict ${vCls(a.verdict)}">${vTxt(a)}</span></div>
+      </div>
+      ${strHtml?`<div style="margin-bottom:12px;"><div class="sec-label" style="color:var(--green)">✨ ${T('strengths')}</div>${strHtml}</div>`:''}
+      ${issHtml?`<div style="margin-bottom:12px;"><div class="sec-label" style="color:var(--orange)">🔧 ${T('improve')}</div>${issHtml}</div>`:''}
+      <div class="ag-summary">${esc(a.summary)}</div>
+    </div>`;
+  }).join('')||`<div class="empty">${T('no_data')}</div>`;
+}
+
+function scrollToAgent(name){
+  switchTab('quality');
+  setTimeout(()=>{const el=document.getElementById('ag_'+name.replace(/\s/g,'_'));if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},80);
+}
+
+function openCatPanel(c){
+  if(typeof c==='string')c=JSON.parse(c);
+  const name=LANG==='en'?c.name_en||c.name:c.name;
+  const alt=LANG==='zh'?c.name_en||'':c.name||'';
+  document.getElementById('sidePanelContent').innerHTML=`
+    <div style="font-size:26px;margin-bottom:4px;">${c.icon}</div>
+    <div style="font-size:16px;font-weight:700;color:${c.color};margin-bottom:2px;">${esc(name)}</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">${esc(alt)} · ${c.count} ${T('msgs')} · ${c.percentage}%</div>
+    ${(c.subcategories||[]).length?`<div style="margin-bottom:12px;">${c.subcategories.map(s=>`<span style="background:${c.color}22;color:${c.color};border-radius:4px;padding:2px 8px;font-size:11px;margin:2px;display:inline-block;">${esc(s)}</span>`).join('')}</div>`:''}
+    <div style="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;">${T('examples')}</div>
+    ${(c.examples||[]).map(e=>`<div style="background:var(--surface2);border-radius:7px;padding:9px 11px;margin-bottom:7px;font-size:12px;line-height:1.5;border-left:3px solid ${c.color};">${esc(e)}</div>`).join('')||`<div class="empty">${T('no_data')}</div>`}`;
+  const p=document.getElementById('sidePanel');p.style.display='block';setTimeout(()=>p.classList.add('open'),10);
+}
+function closeSide(){const p=document.getElementById('sidePanel');p.classList.remove('open');setTimeout(()=>p.style.display='none',260);}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── Demo Data ────────────────────────────────────────────
+const DEMO={
+  "generated_at":"2026-06-15 15:30","days":30,"total_messages":1843,"total_groups":38,
+  "classification":{"categories":[
+    {"name":"賠率/計分問題","name_en":"Grading / Odds","count":498,"percentage":27,"icon":"🎯","color":"#E63946","examples":["這場比賽的賠率為什麼被取消？","B143 grading issue for match #44821","請問這筆注單結算為什麼跟預期不同"],"subcategories":["誤判計分","賠率取消","結算查詢"]},
+    {"name":"帳號/密碼問題","name_en":"Account / Password","count":387,"percentage":21,"icon":"🔐","color":"#457B9D","examples":["我的後台帳號無法登入","password reset for B161 manager","can you help me reset the back office password"],"subcategories":["密碼重設","帳號鎖定","新帳號申請"]},
+    {"name":"技術/API 問題","name_en":"Technical / API","count":313,"percentage":17,"icon":"⚙️","color":"#2A9D8F","examples":["API 回傳 500 error，請協助","iframe 在網站上無法顯示","the feed is not updating since this morning"],"subcategories":["API 錯誤","iFrame 問題","資料 Feed"]},
+    {"name":"賽事/賠率查詢","name_en":"Odds Inquiry","count":240,"percentage":13,"icon":"📊","color":"#E9C46A","examples":["明天歐冠有開盤嗎","can you add odds for this match?","何時可以看到亞洲盤？"],"subcategories":["新賽事請求","特殊賠率","盤口查詢"]},
+    {"name":"資金/結算","name_en":"Settlement","count":202,"percentage":11,"icon":"💰","color":"#F4A261","examples":["Invoice 什麼時候開？","monthly fee 有沒有打折","settlement report 有問題"],"subcategories":["月費問題","Invoice","結算報告"]},
+    {"name":"IP/網域設定","name_en":"IP / Domain","count":129,"percentage":7,"icon":"🌐","color":"#6A4C93","examples":["我們的 IP 被封鎖了","domain mapping 設定好了嗎","whitelist 申請進度如何"],"subcategories":["IP 白名單","網域設定","Proxy"]},
+    {"name":"一般詢問","name_en":"General","count":74,"percentage":4,"icon":"💬","color":"#8D99AE","examples":["你們幾點上班？","客服有沒有 LINE","這個功能什麼時候上線"],"subcategories":[]}
+  ],"total_analyzed":1843,
+  "top_keywords":["grading","password","api","reset","invoice","whitelist","odds","iframe"],
+  "insights":["賠率/計分問題佔 27%，建議建立標準申訴流程，可減少重複詢問約 40%","密碼重設多為重複性作業，建議評估自助重設功能","API 問題集中特定時段，建議建立系統狀態頁","結算問題月初明顯增加，建議提前在月底發送 Invoice 提醒"]},
+  "daily_trend":(()=>{const r=[];const b=new Date('2026-05-16');for(let i=0;i<31;i++){const d=new Date(b);d.setDate(b.getDate()+i);const wk=d.getDay();r.push({date:d.toISOString().slice(0,10),count:wk===0||wk===6?Math.floor(30+Math.random()*20):Math.floor(50+Math.random()*50)});}return r;})(),
+  "top_groups":[{"group":"B143 - SportsBetting Pro","count":234},{"group":"B161 - Asian Markets","count":198},{"group":"B026 - Global Ops","count":176},{"group":"B199 - Premium Client","count":154},{"group":"B085 - Euro Division","count":128},{"group":"B211 - New Partner","count":109},{"group":"B072 - Pacific Hub","count":94},{"group":"B138 - VIP Account","count":87},{"group":"B055 - Settlement","count":76},{"group":"B190 - Tech Support","count":65}],
+  "sentiment":{
+    "source":"ai_inference","total_analyzed":2393,"overall_mood":"mixed",
+    "mood_distribution":{
+      "calm":{"count":1580,"pct":66},
+      "impatient":{"count":430,"pct":18},
+      "frustrated":{"count":263,"pct":11},
+      "angry":{"count":120,"pct":5}
+    },
+    "common_triggers":["等待時間過長，客服說會查但遲遲沒有回覆","計分/賠率問題反覆出現，客戶覺得沒有被認真處理","密碼重設流程不清楚，客戶需要多次詢問"],
+    "positive_signals":["客戶主動說謝謝的比例約 30%","技術問題解決後客戶普遍滿意"],
+    "top_unhappy_groups":[
+      {"group":"B143 - SportsBetting Pro","avg_score":3.8},
+      {"group":"B026 - Global Ops","avg_score":3.2},
+      {"group":"B199 - Premium Client","avg_score":2.9},
+      {"group":"B085 - Euro Division","avg_score":2.7},
+      {"group":"B161 - Asian Markets","avg_score":2.5}
+    ],
+    "escalations":[],
+    "summary":"整體客戶情緒以平靜為主（66%），但有 18% 出現不耐煩情緒，主要集中在計分問題和等待回覆時間過長。建議優先改善客服的跟進速度和計分問題處理流程。"
+  },
+  "weekly_summary":[
+    {"week_start":"2026-06-09","total":892,"client_msgs":534,"reps_msgs":358,"busiest_day":"2026-06-11","busiest_hour":"14:00","daily":{"2026-06-09":98,"2026-06-10":145,"2026-06-11":187,"2026-06-12":163,"2026-06-13":142,"2026-06-14":89,"2026-06-15":68}},
+    {"week_start":"2026-06-02","total":756,"client_msgs":452,"reps_msgs":304,"busiest_day":"2026-06-05","busiest_hour":"15:00","daily":{"2026-06-02":87,"2026-06-03":112,"2026-06-04":134,"2026-06-05":156,"2026-06-06":143,"2026-06-07":72,"2026-06-08":52}},
+    {"week_start":"2026-05-26","total":698,"client_msgs":418,"reps_msgs":280,"busiest_day":"2026-05-28","busiest_hour":"13:00","daily":{"2026-05-26":78,"2026-05-27":98,"2026-05-28":145,"2026-05-29":132,"2026-05-30":121,"2026-05-31":68,"2026-06-01":56}},
+    {"week_start":"2026-05-19","total":623,"client_msgs":373,"reps_msgs":250,"busiest_day":"2026-05-21","busiest_hour":"14:00","daily":{"2026-05-19":67,"2026-05-20":89,"2026-05-21":134,"2026-05-22":119,"2026-05-23":108,"2026-05-24":62,"2026-05-25":44}}
+  ],
+  "agent_quality":[
+    {"agent":"Alan Lin","score":4,"verdict":"需改善","verdict_en":"Needs Improvement","total_replies":134,"sample_count":8,"strengths":["回應速度快","有基本問候語"],"issues":[{"type":"罐頭回覆","type_en":"Canned Reply","original":"Noted, will check and get back to you.","improved":"Hi！已收到您關於 #44821 的計分問題，我現在去查詢官方賽果，預計 1 小時內回覆您，請稍候。","reason":"幾乎每次都用一樣的句子，客戶感受不到被認真對待"},{"type":"資訊不足","type_en":"Insufficient Info","original":"Please hold on.","improved":"了解，我現在幫您查帳號登入問題。請問您用的是哪個瀏覽器？有沒有收到錯誤訊息？","reason":"只叫客戶等，沒有給預計時間或進一步詢問"},{"type":"答非所問","type_en":"Off-topic","original":"We will check for you.","improved":"關於您問的 Invoice 日期，本月帳單預計在 6/30 前發出，如有任何疑問可以直接告訴我。","reason":"客戶問具體日期，但回覆沒有正面回應"}],"summary":"Alan 的回應速度不錯，但超過 70% 的回覆都是「noted/will check」這類制式語句。建議主管安排 1-on-1 輔導，練習針對不同情境給出個人化且帶具體資訊的回覆。"},
+    {"agent":"Mia Huang","score":8,"verdict":"良好","verdict_en":"Good","total_replies":108,"sample_count":8,"strengths":["回覆有同理心，會先確認問題","主動提供具體步驟和預計時間","語氣溫暖"],"issues":[{"type":"偶發過於簡短","type_en":"Occasionally Brief","original":"ok noted","improved":"收到！我現在幫您確認這筆訂單，您稍等一下 😊","reason":"在某些情境下過於簡短，加一點溫度感會更好"}],"summary":"Mia 整體表現良好，客戶問題都有被正面回應，語氣溫暖有人情味。建議在少數過於簡短的場合稍微補充一句。"},
+    {"agent":"Bruce Gan","score":6,"verdict":"尚可","verdict_en":"Fair","total_replies":98,"sample_count":8,"strengths":["技術問題解釋清楚","英文回覆流暢"],"issues":[{"type":"語氣強硬","type_en":"Harsh Tone","original":"This is the standard procedure. Please follow the steps.","improved":"了解！標準流程是：① 到後台 → ② 點選設定 → ③ 重設密碼。如果遇到問題，隨時告訴我！","reason":"語氣像在命令，讓客戶感覺被教訓"},{"type":"罐頭回覆","type_en":"Canned Reply","original":"Please wait, we will check.","improved":"收到，我現在幫您查 API 連線問題，預計 30 分鐘內給您更新。","reason":"制式回覆缺少預計時間"}],"summary":"Bruce 在技術說明上有一定水準，但語氣有時過於「制度化」。建議在解釋步驟時加入輔助性語言，讓客戶感受到支持。"},
+    {"agent":"Jackie Lee","score":9,"verdict":"優秀","verdict_en":"Excellent","total_replies":122,"sample_count":8,"strengths":["每次都有個人化回覆，完全不用罐頭","主動詢問需求，提前預防後續問題","複雜問題分步驟說明，清晰易懂"],"issues":[],"summary":"Jackie 是目前團隊表現最穩定的客服。建議讓她協助帶新人或製作回覆範本。"},
+    {"agent":"Lucy Li","score":5,"verdict":"尚可","verdict_en":"Fair","total_replies":76,"sample_count":8,"strengths":["中文回覆清楚","態度友善親切"],"issues":[{"type":"資訊不足","type_en":"Insufficient Info","original":"好的，我去問一下。","improved":"好的！我現在去查詢這筆結算記錄，預計 20-30 分鐘內回覆您，如果有任何進展我會先跟您說。","reason":"沒有說要去做什麼或預計多久"},{"type":"罐頭回覆","type_en":"Canned Reply","original":"請稍等，謝謝。","improved":"了解，您是問關於 6/10 這筆投注的計分問題對嗎？我幫您查一下，大概 15 分鐘回覆您。","reason":"「請稍等」沒有給客戶任何有意義的資訊"}],"summary":"Lucy 的服務態度很好，但在提供具體資訊方面還需加強。建議練習在每次回覆中帶入：① 確認問題 ② 說明行動 ③ 預計時間。"},
+    {"agent":"Juana Lu","score":7,"verdict":"良好","verdict_en":"Good","total_replies":89,"sample_count":8,"strengths":["回覆完整，有帶解決步驟","客戶問題都有直接回應"],"issues":[{"type":"偶發語氣過正式","type_en":"Overly Formal","original":"Dear client, we have acknowledged your request.","improved":"Hi！收到您的請求，我現在幫您處理，稍後會給您更新 😊","reason":"語氣過於正式，和 B2B 即時通訊的風格有些不搭"}],"summary":"Juana 整體表現不錯，回覆完整且有幫助。語氣可以稍微輕鬆一點，更符合即時通訊的節奏。"}
+  ]
+};
+
+
+// ── Sentiment ────────────────────────────────────────────
+let moodInst=null;
+function renderSentiment(s){
+  if(!s){
+    document.getElementById('sentimentKPIs').innerHTML='<div class="empty" style="grid-column:span 4">無情緒分析資料</div>';
+    return;
+  }
+  const md=s.mood_distribution||{};
+  const total=s.total_analyzed||1;
+  const moods=[
+    {key:'calm',label:'平靜',label_en:'Calm',color:'var(--green)',icon:'😊'},
+    {key:'impatient',label:'不耐煩',label_en:'Impatient',color:'var(--yellow)',icon:'😤'},
+    {key:'frustrated',label:'沮喪',label_en:'Frustrated',color:'var(--orange)',icon:'😠'},
+    {key:'angry',label:'憤怒',label_en:'Angry',color:'var(--danger)',icon:'🤬'},
+  ];
+
+  // KPI cards — 點擊可篩選
+  document.getElementById('sentimentKPIs').innerHTML=moods.map(m=>{
+    const d=md[m.key]||{count:0,pct:0};
+    const clickable=m.key!=='calm'&&(d.count||0)>0;
+    return `<div class="card" style="padding:14px 16px;border-top:3px solid ${m.color};${clickable?'cursor:pointer;':''}" ${clickable?`onclick="filterSentimentRecords('${m.key}')"`:''}>
+      <div class="card-title">${m.icon} ${LANG==='en'?m.label_en:m.label}</div>
+      <div class="stat-val" style="color:${m.color}">${d.count||0}</div>
+      <div class="stat-label">${d.pct||0}% ${LANG==='zh'?'的訊息':'of messages'}${clickable?`<br><span style="color:var(--accent);font-size:10px;">▼ ${LANG==='zh'?'點擊查看詳情':'Click to view'}</span>`:''}</div>
+    </div>`;
+  }).join('');
+
+  // Donut chart
+  if(moodInst){moodInst.destroy();moodInst=null;}
+  moodInst=new Chart(document.getElementById('moodChart'),{
+    type:'doughnut',
+    data:{
+      labels:moods.map(m=>LANG==='en'?m.label_en:m.label),
+      datasets:[{data:moods.map(m=>(md[m.key]||{}).count||0),
+        backgroundColor:['#3fb950','#d29922','#f0883e','#f85149'],
+        borderColor:'#161b22',borderWidth:2,hoverOffset:6}]
+    },
+    options:{responsive:true,cutout:'55%',
+      onClick:(e,els)=>{if(els.length){filterSentimentRecords(moods[els[0].index].key);}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.parsed} (${(md[moods[ctx.dataIndex].key]||{}).pct||0}%)`}}}}
+  });
+  document.getElementById('moodLegend').innerHTML=moods.map(m=>`<div class="leg-item" style="cursor:pointer;" onclick="filterSentimentRecords('${m.key}')"><div class="leg-dot" style="background:${m.color}"></div><span>${m.icon} ${LANG==='en'?m.label_en:m.label}</span></div>`).join('');
+
+  // Triggers
+  const triggers=s.common_triggers||[];
+  document.getElementById('triggerList').innerHTML=triggers.length?
+    triggers.map((t,i)=>`<div class="insight-item" style="margin-bottom:8px;"><div class="insight-n" style="color:var(--orange)">${i+1}</div><div class="insight-t">${esc(t)}</div></div>`).join(''):
+    `<div class="empty">無資料</div>`;
+
+  // Unhappy groups
+  const ug=s.top_unhappy_groups||[];
+  document.getElementById('unhappyGroups').innerHTML=ug.length?
+    ug.map(g=>`<div class="g-row"><div class="g-name" title="${esc(g.group)}">${esc(g.group)}</div><div class="g-bar-bg"><div class="g-bar" style="width:${Math.round((g.avg_score/5)*100)}%;background:var(--danger);"></div></div><div class="g-cnt" style="color:var(--danger)">${g.avg_score}</div></div>`).join(''):
+    `<div class="empty">無資料</div>`;
+
+  // Summary
+  document.getElementById('sentimentSummary').innerHTML=s.summary?
+    `<div style="font-size:13px;line-height:1.7;color:var(--text);padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);">${esc(s.summary)}</div>`:
+    `<div class="empty">無摘要</div>`;
+
+  // 詳細記錄
+  renderSentimentRecords(s.detailed_records||[], null);
+}
+
+function filterSentimentRecords(mood){
+  if(!DATA?.sentiment) return;
+  const records=DATA.sentiment.detailed_records||[];
+  const filtered=mood==='calm'?records:records.filter(r=>r.mood===mood);
+  renderSentimentRecords(filtered, mood);
+  // scroll to records
+  setTimeout(()=>{
+    const el=document.getElementById('sentimentRecords');
+    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  },100);
+}
+
+const MOOD_CONFIG={
+  calm:    {label:'平靜',label_en:'Calm',    color:'var(--green)', icon:'😊'},
+  impatient:{label:'不耐煩',label_en:'Impatient',color:'var(--yellow)',icon:'😤'},
+  frustrated:{label:'沮喪',label_en:'Frustrated',color:'var(--orange)',icon:'😠'},
+  angry:   {label:'憤怒',label_en:'Angry',   color:'var(--danger)',icon:'🤬'},
+};
+
+function renderSentimentRecords(records, activeMood){
+  const el=document.getElementById('sentimentRecords');
+  if(!el)return;
+  if(!records.length){
+    el.innerHTML=`<div class="empty">${activeMood&&activeMood!=='calm'?'這個情緒類別沒有記錄':'無負面情緒記錄'}</div>`;
+    return;
+  }
+  const mood=activeMood?MOOD_CONFIG[activeMood]:null;
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:14px;font-weight:700;">${mood?mood.icon+' '+(LANG==='en'?mood.label_en:mood.label)+' 記錄':'所有負面情緒記錄'} <span style="font-size:12px;color:var(--muted);">（共 ${records.length} 筆）</span></div>
+      ${activeMood?`<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="renderSentimentRecords(DATA.sentiment.detailed_records||[],null)">✕ 清除篩選</button>`:''}
+    </div>
+    ${records.map(r=>{
+      const mc=MOOD_CONFIG[r.mood]||MOOD_CONFIG.impatient;
+      const ctx=r.context||[];
+      return `<div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:12px;border-left:4px solid ${mc.color};">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">${mc.icon}</span>
+            <span style="font-size:13px;font-weight:700;color:${mc.color}">${LANG==='en'?mc.label_en:mc.label}</span>
+            <span style="font-size:11px;background:${mc.color}22;color:${mc.color};padding:2px 8px;border-radius:10px;">${(r.keywords||[]).join(', ')}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);">${esc(r.group||'')} · ${(r.ts||'').slice(0,16)}</div>
+        </div>
+        ${r.reason?`<div style="font-size:12px;color:var(--yellow);margin-bottom:10px;">💡 ${esc(r.reason)}</div>`:''}
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${ctx.map(c=>`
+            <div style="display:flex;gap:8px;align-items:flex-start;">
+              <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0;margin-top:2px;${c.type==='client'?'background:rgba(248,81,73,.15);color:var(--danger);':'background:rgba(63,185,80,.15);color:var(--green);'}">${c.type==='client'?'客戶':'客服'}</span>
+              <div style="font-size:12px;line-height:1.6;color:${c.type==='client'?'var(--text)':'var(--muted)'};">${esc(c.msg||'')}</div>
+            </div>`).join('')}
+        </div>
+        ${r.suggestion?`<div style="margin-top:10px;padding:8px 10px;background:rgba(88,166,255,.08);border-radius:6px;font-size:12px;color:var(--accent);">📝 建議：${esc(r.suggestion)}</div>`:''}
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ── Weekly Summary ────────────────────────────────────────
+let weeklyInst=null;
+function renderWeekly(weeks){
+  if(!weeks||!weeks.length){
+    document.getElementById('weeklyCards').innerHTML='<div class="empty">無每週資料</div>';
+    return;
+  }
+  // Weekly bar chart
+  if(weeklyInst){weeklyInst.destroy();weeklyInst=null;}
+  const recent=weeks.slice(0,8).reverse();
+  weeklyInst=new Chart(document.getElementById('weeklyChart'),{
+    type:'bar',
+    data:{
+      labels:recent.map(w=>w.week_start.slice(5)+' '+T('lbl_week')),
+      datasets:[
+        {label:LANG==='zh'?'客戶訊息':'Client msgs',data:recent.map(w=>w.client_msgs||0),backgroundColor:'rgba(88,166,255,.7)',borderRadius:4},
+        {label:LANG==='zh'?'客服回覆':'Agent replies',data:recent.map(w=>w.reps_msgs||0),backgroundColor:'rgba(63,185,80,.7)',borderRadius:4},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:true,scales:{x:{stacked:false,grid:{color:'#30363d'},ticks:{color:'#7d8590',font:{size:11}}},y:{grid:{color:'#30363d'},ticks:{color:'#7d8590',font:{size:11}}}},plugins:{legend:{labels:{color:'#7d8590',font:{size:12}}},tooltip:{mode:'index',intersect:false}}}
+  });
+
+  // Weekly cards
+  document.getElementById('weeklyCards').innerHTML=weeks.slice(0,8).map((w,i)=>{
+    const prev=weeks[i+1];
+    const change=prev?Math.round((w.client_msgs-prev.client_msgs)*100/(prev.client_msgs||1)):0;
+    const changeColor=change>0?'var(--danger)':change<0?'var(--green)':'var(--muted)';
+    const changeIcon=change>0?'↑':change<0?'↓':'→';
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">${w.week_start} 週</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${LANG==='zh'?'共':'Total'} ${w.total} ${T('msgs')}</div>
+        </div>
+        ${prev?`<span style="font-size:13px;font-weight:700;color:${changeColor}">${changeIcon} ${Math.abs(change)}%</span>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div style="background:var(--surface2);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">${LANG==='zh'?'客戶訊息':'Client'}</div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent)">${w.client_msgs||0}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">${LANG==='zh'?'客服回覆':'Replies'}</div>
+          <div style="font-size:18px;font-weight:700;color:var(--green)">${w.reps_msgs||0}</div>
+        </div>
+      </div>
+      ${w.busiest_day?`<div style="font-size:12px;color:var(--muted);">📅 ${LANG==='zh'?'最忙':'Busiest'}: <span style="color:var(--text)">${w.busiest_day}</span> &nbsp;⏰ ${w.busiest_hour}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ── Telegram Mini App ───────────────────────────────────
+(function(){
+  const tg = window.Telegram?.WebApp;
+  if(!tg) return;
+
+  tg.expand();
+  tg.ready();
+
+  // 顯示載入中
+  function showLoading(){
+    document.getElementById('welcomeState').innerHTML=`
+      <div style="font-size:48px;">📊</div>
+      <div style="font-size:18px;font-weight:700;">載入報表資料中...</div>
+      <div style="color:var(--muted);font-size:13px;margin-top:4px;">正在從 Bot 取得最新資料</div>
+      <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-top:16px;"></div>`;
+    document.getElementById('welcomeState').style.display='flex';
+  }
+
+  // 接收 Bot 傳來的資料
+  tg.onEvent('message', function(msg){
+    try{
+      const data = typeof msg === 'string' ? JSON.parse(msg) : msg;
+      if(data && data.generated_at){
+        renderReport(data);
+      }
+    }catch(e){console.error('Parse error:', e);}
+  });
+
+  // 啟動時向 Bot 請求資料
+  showLoading();
+  tg.sendData(JSON.stringify({action: 'get_report'}));
+
+  // 如果 10 秒後還沒收到資料，顯示手動上傳選項
+  setTimeout(function(){
+    if(!DATA){
+      document.getElementById('welcomeState').innerHTML=`
+        <div style="font-size:48px;">📊</div>
+        <div style="font-size:18px;font-weight:700;">AP Gaming 客服分析報表</div>
+        <div style="color:var(--muted);font-size:13px;">無法自動取得資料，請手動上傳</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+          <button class="btn btn-primary" onclick="loadDemo()">🧪 載入示範資料</button>
+          <button class="btn btn-ghost" onclick="openModal()">⚙️ 貼入我的資料</button>
+        </div>`;
+    }
+  }, 10000);
+})();
+</script>
+</body>
+</html>
